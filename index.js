@@ -4,7 +4,7 @@ import { DRACOLoader } from './libs/DRACOLoader.js';
 import {  OrbitControls  } from './libs/OrbitControls.js'
 import { GUI } from './libs/lil-gui.module.min.js';
 
-const modelO="models/DrDre2/DrDre2.gltf"
+//const modelO="models/DrDre2/DrDre2.gltf"
 
 const uploadedFile = document.getElementById("selectedModel").files[0]
 
@@ -15,6 +15,8 @@ function loadGLTF ( uploadedFile ) {
 loadGLTF ( uploadedFile, function (gltf)  {
   modelO=uploadedFile
 });
+
+const modelO="models/DrDre2/DrDre2.gltf"
 
 const clock = new THREE.Clock();
 const scene = new THREE.Scene();
