@@ -8,10 +8,12 @@ const modelO="models/DrDre2/DrDre2.gltf"
 
 const uploadedFile = document.getElementById("selectedModel").files[0]
 
-function loadGLTF(){}
+function loadGLTF ( uploadedFile ) {
+   loadGLTF = new GLTFLoader(uploadedFile).setPath('models/DrDre2/DrDre2.gltf');
+}
 
 loadGLTF ( uploadedFile, function (gltf)  {
-  modelO=gltf.scene
+  modelO=uploadedFile
 });
 
 const clock = new THREE.Clock();
