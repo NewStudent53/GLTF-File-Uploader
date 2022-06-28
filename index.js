@@ -1,30 +1,18 @@
-import * as THREE from './libs/three.js'
-import { GLTFLoader } from './libs/GLTFLoader.js'
-import { DRACOLoader } from './libs/DRACOLoader.js'
+import * as THREE from './libs/three.js';
+import { GLTFLoader } from './libs/GLTFLoader.js';
+import { DRACOLoader } from './libs/DRACOLoader.js';
 import {  OrbitControls  } from './libs/OrbitControls.js'
 import { GUI } from './libs/lil-gui.module.min.js';
 
-const realFileBtn = document.getElementById("real-file");
-const customBtn = document.getElementById("custom-button");
-const customTxt = document.getElementById("custom-text");
+const modelO="models/DrDre2/DrDre2.gltf"
 
+const uploadedFile = document.getElementById("selectedModel").files[0]
 
-//File reader & Detector -------------------------------------->
-customBtn.addEventListener("click", function() {
-  realFileBtn.click();
+function loadGLTF(){}
+
+loadGLTF ( uploadedFile, function (gltf)  {
+  modelO=gltf.scene
 });
-
-realFileBtn.addEventListener("change", function() {
-  if (realFileBtn.value) {
-    customTxt.innerHTML = realFileBtn.value.match(
-      /[\/\\]([\w\d\s\.\-\(\)]+)$/
-    )[1];
-  } else {
-    customTxt.innerHTML = "No file chosen, yet.";
-  }
-});
-//File Reader & Detector -------------------------------------->
-
 
 const clock = new THREE.Clock();
 const scene = new THREE.Scene();
@@ -54,8 +42,6 @@ pmremGenerator.compileEquirectangularShader();
 
 const actionsArray = [];
 const mixers  = [];
-
-const modelO = 'models/DrDre2/DrDre2.gltf';
 
 new THREE.TextureLoader().load( 'textures/equirectangular.png', (texture) => {
     
@@ -87,9 +73,18 @@ new THREE.TextureLoader().load( 'textures/equirectangular.png', (texture) => {
                 'play Animations': playAnimations
             }
 
-            const animationsFolder = panel.addFolder('Animations');
-            animationsFolder.add(variables, 'stop Animations');
-            animationsFolder.add(variables, 'play Animations');
+            const variables2 = {
+                'Demo 1 (Model)' : modelO,
+                'Demo 2 (Model)' : modelO
+            }
+
+            //const animationsFolder = panel.addFolder('Animations');
+            //animationsFolder.add(variables, 'stop Animations');
+            //animationsFolder.add(variables, 'play Animations');
+
+            const DemoFolder = panel.addFolder('Demo (Models)');
+            DemoFolder.add(variables2, 'Demo 1 (Model)');
+            DemoFolder.add(variables2, 'Demo 2 (Model)');
 
             const drDreFolder = panel.addFolder('drDre');
             const drDreActions = registerAnimation(animations, drDre.scene);
