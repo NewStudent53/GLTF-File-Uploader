@@ -4445,7 +4445,6 @@ function toTrianglesDrawMode( geometry, drawMode ) {
 
 	const newGeometry = geometry.clone();
 	newGeometry.setIndex( newIndices );
-
 	return newGeometry;
 
 }
