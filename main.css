@@ -6,10 +6,12 @@
     border-radius: 5px;
     cursor: pointer;
   }
+
   
   #custom-button:hover {
     background-color: #00b28f;
   }
+
   
   #custom-text {
     margin-left: 10px;
