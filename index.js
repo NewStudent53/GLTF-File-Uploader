@@ -1,190 +1,232 @@
-import * as THREE from './libs/three.js';
-import { GLTFLoader } from './libs/GLTFLoader.js';
-import { DRACOLoader } from './libs/DRACOLoader.js';
-import {  OrbitControls  } from './libs/OrbitControls.js'
-import { GUI } from './libs/lil-gui.module.min.js';
+import zip from 'zip-js-esm';
+import { fs } from './lib/zip-fs.js';
 
-const modelO="models/DrDre2/DrDre2.gltf"
+zip.useWebWorkers = false;
 
-const uploadedFile = document.getElementById("selectedModel").files[0]
+/**
+ * Watches an element for file drops, parses to create a filemap hierarchy,
+ * and emits the result.
+ */
+class SimpleDropzone {
 
-function loadGLTF ( uploadedFile ) {
-   loadGLTF = new GLTFLoader(uploadedFile).setPath('models/DrDre2/DrDre2.gltf');
-};
+  /**
+   * @param  {Element} el
+   * @param  {Element} inputEl
+   */
+  constructor (el, inputEl) {
+    this.el = el;
+    this.inputEl = inputEl;
 
-loadGLTF ( uploadedFile, function (gltf)  {
-  modelO= gltf.scene
-});
+    this.listeners = {
+      drop: [],
+      dropstart: [],
+      droperror: []
+    };
 
-const clock = new THREE.Clock();
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+    this._onDragover = this._onDragover.bind(this);
+    this._onDrop = this._onDrop.bind(this);
+    this._onSelect = this._onSelect.bind(this);
 
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize( window.innerWidth, window.innerHeight );
-document.body.appendChild( renderer.domElement );
+    el.addEventListener('dragover', this._onDragover, false);
+    el.addEventListener('drop', this._onDrop, false);
+    inputEl.addEventListener('change', this._onSelect);
+  }
 
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.outputEncoding = THREE.sRGBEncoding;
+  /**
+   * @param  {string}   type
+   * @param  {Function} callback
+   * @return {SimpleDropzone}
+   */
+  on (type, callback) {
+    this.listeners[type].push(callback);
+    return this;
+  }
 
-const geometry = new THREE.BoxGeometry();
-const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-const cube = new THREE.Mesh( geometry, material );
+  /**
+   * @param  {string} type
+   * @param  {Object} data
+   * @return {SimpleDropzone}
+   */
+  _emit (type, data) {
+    this.listeners[type]
+      .forEach((callback) => callback(data));
+    return this;
+  }
 
-const loader = new GLTFLoader();
-const draco = new DRACOLoader();
-draco.setDecoderPath('libs/draco/');
+  /**
+   * Destroys the instance.
+   */
+  destroy () {
+    const el = this.el;
+    const inputEl = this.inputEl;
 
-loader.setDRACOLoader(draco);
+    el.removeEventListener('dragover', this._onDragover, false);
+    el.removeEventListener('drop', this._onDrop, false);
+    inputEl.removeEventListener('change', this._onSelect);
 
-const controls = new OrbitControls( camera, renderer.domElement );
+    delete this.el;
+    delete this.inputEl;
+    delete this.listeners;
+  }
 
-const pmremGenerator = new THREE.PMREMGenerator( renderer );
-pmremGenerator.compileEquirectangularShader();
+  /**
+   * References (and horror):
+   * - https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer/items
+   * - https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer/files
+   * - https://code.flickr.net/2012/12/10/drag-n-drop/
+   * - https://stackoverflow.com/q/44842247/1314762
+   *
+   * @param  {Event} e
+   */
+  _onDrop (e) {
+    e.stopPropagation();
+    e.preventDefault();
 
-const actionsArray = [];
-const mixers  = [];
+    this._emit('dropstart');
 
-new THREE.TextureLoader().load( 'textures/equirectangular.png', (texture) => {
-    
-    texture.encoding = THREE.sRGBEncoding;
-    const text = pmremGenerator.fromEquirectangular( texture );
+    const files = Array.from(e.dataTransfer.files || []);
+    const items = Array.from(e.dataTransfer.items || []);
 
-    const panel = new GUI( { width: 310 } );
+    if (files.length === 0 && items.length === 0) {
+      this._fail('Required drag-and-drop APIs are not supported in this browser.');
+      return;
+    }
 
-    Promise.all([
-        loadModel(modelO),
-    ]).then(
-        values => {
-            const drDre = values[0];
-            const animations = drDre.animations
-            scene.add(drDre.scene);
-            
-            
-            drDre.scene.traverse( (node) => {
-                if(node.material != undefined){
-                    
-                    node.material.envMap = text.texture;
-                    node.material.needsUpdate = true;
-                    
-                }
-            })
-            
-            const variables = {
-                'stop Animations' : stopAnimations,
-                'play Animations': playAnimations
-            }
+    // Prefer .items, which allow folder traversal if necessary.
+    if (items.length > 0) {
+      const entries = items.map((item) => item.webkitGetAsEntry());
 
-            const variables2 = {
-                'Demo 1 (Model)' : modelO,
-                'Demo 2 (Model)' : modelO
-            }
+      if (entries[0].name.match(/\.zip$/)) {
+        this._loadZip(items[0].getAsFile());
+      } else {
+        this._loadNextEntry(new Map(), entries);
+      }
 
-            //const animationsFolder = panel.addFolder('Animations');
-            //animationsFolder.add(variables, 'stop Animations');
-            //animationsFolder.add(variables, 'play Animations');
+      return;
+    }
 
-            const DemoFolder = panel.addFolder('Demo (Models)');
-            DemoFolder.add(variables2, 'Demo 1 (Model)');
-            DemoFolder.add(variables2, 'Demo 2 (Model)');
+    // Fall back to .files, since folders can't be traversed.
+    if (files.length === 1 && files[0].name.match(/\.zip$/)) {
+      this._loadZip(files[0]);
+    }
+    this._emit('drop', {files: new Map(files.map((file) => [file.name, file]))});
+  }
 
-            const drDreFolder = panel.addFolder('drDre');
-            const drDreActions = registerAnimation(animations, drDre.scene);
-            actionsArray.push(drDreActions);
+  /**
+   * @param  {Event} e
+   */
+  _onDragover (e) {
+    e.stopPropagation();
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+  }
 
-            for(let i = 1; i < values.length; i++){
-                
-                const element = values[i];
-                drDre.scene.add(element.scene);
-                element.scene.position.z += 0.03
-                element.scene.traverse( (node) => {
-                    if(node.material != undefined){
-                        
-                        node.material.envMap = text.texture;
-                        node.material.needsUpdate = true;
-                        
-                    }
-                })
-                const name  = 'show/hide' + element.scene.children[1].name;
+  /**
+   * @param  {Event} e
+   */
+  _onSelect (e) {
+    this._emit('dropstart');
 
-                variables[name] = function () {
-                    element.scene.visible = !element.scene.visible;
-                };
-                drDreFolder.add(variables, name);
-                const actions = registerAnimation(animations, element.scene);
-                actions[1].play();
-                actionsArray.push(actions);
-            }
-            
-            scene.background = text.texture;
-            
-            drDreFolder.add(variables, 'show/hide DrDre');
+    // HTML file inputs do not seem to support folders, so assume this is a flat file list.
+    const files = [].slice.call(this.inputEl.files);
 
-            animate();
+    // Automatically decompress a zip archive if it is the only file given.
+    if (files.length === 1 && this._isZip(files[0])) {
+      this._loadZip(files[0]);
+      return;
+    }
 
+    const fileMap = new Map();
+    files.forEach((file) => fileMap.set(file.webkitRelativePath || file.name, file));
+    this._emit('drop', {files: fileMap});
+  }
+
+  /**
+   * Iterates through a list of FileSystemEntry objects, creates the fileMap
+   * tree, and emits the result.
+   * @param  {Map<string, File>} fileMap
+   * @param  {Array<FileSystemEntry>} entries
+   */
+  _loadNextEntry (fileMap, entries) {
+    const entry = entries.pop();
+
+    if (!entry) {
+      this._emit('drop', {files: fileMap});
+      return;
+    }
+
+    if (entry.isFile) {
+      entry.file((file) => {
+        fileMap.set(entry.fullPath, file);
+        this._loadNextEntry(fileMap, entries);
+      }, () => console.error('Could not load file: %s', entry.fullPath));
+    } else if (entry.isDirectory) {
+      // readEntries() must be called repeatedly until it stops returning results.
+      // https://www.w3.org/TR/2012/WD-file-system-api-20120417/#the-directoryreader-interface
+      // https://bugs.chromium.org/p/chromium/issues/detail?id=378883
+      const reader = entry.createReader();
+      const readerCallback = (newEntries) => {
+        if (newEntries.length) {
+          entries = entries.concat(newEntries);
+          reader.readEntries(readerCallback);
+        } else {
+          this._loadNextEntry(fileMap, entries);
         }
-    );
-});
+      };
+      reader.readEntries(readerCallback);
+    } else {
+      console.warn('Unknown asset type: ' + entry.fullPath);
+      this._loadNextEntry(fileMap, entries);
+    }
+  }
 
-camera.position.z = 5;
-function animate() {
+  /**
+   * Inflates a File in .ZIP format, creates the fileMap tree, and emits the
+   * result.
+   * @param  {File} file
+   */
+  _loadZip (file) {
+    const pending = [];
+    const fileMap = new Map();
+    const archive = new fs.FS();
 
-    requestAnimationFrame( animate );
+    const traverse = (node) => {
+      if (node.directory) {
+        node.children.forEach(traverse);
+      } else if (node.name[0] !== '.') {
+        pending.push(new Promise((resolve) => {
+          node.getData(new zip.BlobWriter(), (blob) => {
+            blob.name = node.name;
+            fileMap.set(node.getFullname(), blob);
+            resolve();
+          });
+        }));
+      }
+    };
 
-    const delta = clock.getDelta();
-
-    mixers.forEach(element => {
-        element.update( delta );
+    archive.importBlob(file, () => {
+      traverse(archive.root);
+      Promise.all(pending).then(() => {
+        this._emit('drop', {files: fileMap, archive: file});
+      });
     });
+  }
 
-    controls.update();
-    
-    renderer.render( scene, camera );
+  /**
+   * @param  {File} file
+   * @return {Boolean}
+   */
+  _isZip (file) {
+    return file.type === 'application/zip' || file.name.match(/\.zip$/);
+  }
 
-};
-
-
-const loadModel = (url) => {
-
-    return new Promise ( (resolve) =>{
-
-        loader.load(url, (gltf) => {
-            resolve(gltf);
-        });
-    })
+  /**
+   * @param {string} message
+   * @throws
+   */
+  _fail (message) {
+    this._emit('droperror', {message: message});
+  }
 }
 
-const registerAnimation = (animations, model) => {
-
-    const mixer = new THREE.AnimationMixer( model );
-    const actions = [];
-
-    animations.forEach(
-
-        element => {
-            actions.push(mixer.clipAction( element ));
-        }
-
-    );
-    
-    mixers.push(mixer);
-    return actions; 
-}
-
-const stopAnimations = () => {
-
-    actionsArray.forEach(
-        element => {
-            element[1].stop();
-        }
-    )
-}
-
-const playAnimations = () => {
-
-    actionsArray.forEach(
-        element => {
-            element[1].play();
-        }
-    )
-}
+export { SimpleDropzone };

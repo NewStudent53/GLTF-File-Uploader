@@ -1,21 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GLTFLoader</title>
-</head>
-<body>
-    <input id="selectedModel" type="file">   
-    <script type =  "module" src = "libs/three.js"></script>
-    <script type =  "module" src = "libs/lil-gui.module.min.js"></script>
-    <script type =  "module" src = "libs/fflate.module.js"></script>
-    <script type =  "module" src = "libs/DRACOLoader.js"></script>
-    <script type =  "module" src = "libs/GLTFLoader.js"></script>
-    <script type =  "module" src = "libs/EXRLoader.js"></script>
-    <script type =  "module" src = "libs/GLTFLoader.js"></script>
-    <script type =  "module" src = "index.js"></script>
+    <title>glTF3d Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="Webstyle.css">
+    <link href="https://fonts.googleapis.com/css?family=Raleway:300,400" rel="stylesheet">
+    <script src="Webindex.js">
 
+    </script>
+    </head>
+    <body>
+    <main class="wrap">
+    <div class="dropzone">
+    <div class="upload-btn">
+        <input type="file" name="file-input[]" id="file-input" multiple>
+        <label for="file-input">
+            <span>Select the file</span>
+        </label> 
+    </div> 
+    </div> 
+        <div class="spinner"></div> 
+    </main> 
+        <script type="text/x-handlebars-template" id="report-toggle-template">
+    <div class="report-toggle level-{{issues.maxSeverity}}">
+      <div class="report-toggle-text">
+      </div>
+      <div class="report-toggle-close" aria-label="Hide">&times;</div>
+    </div>
+  </script> <script type="text/x-handlebars-template" id="report-template">
+    <!DOCTYPE html>
+    <link href="https://fonts.googleapis.com/css?family=Raleway:300,400" rel="stylesheet">
+    <link rel="stylesheet" href="{{location.protocol}}//{{location.host}}/style.css">
+  </script> 
+  <script type="text/x-handlebars-template" id="report-table-partial">
+  </script> 
 </body>
-</html>
