@@ -8,7 +8,13 @@ export const environments = [
   {
     id: 'venice-sunset',
     name: 'Venice Sunset',
-    path: 'assets/environment/equirectangular.hdr',
+    path: 'assets/environment/venice_sunset_1k.hdr',
+    format: '.hdr'
+  },
+  {
+    id: 'footprint-court',
+    name: 'Footprint Court (HDR Labs)',
+    path: 'assets/environment/footprint_court_2k.hdr',
     format: '.hdr'
   }
 ];
