@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SimpleDropzone • Demo</title>
+  <style>
+html, body {
+  text-align: center;
+}
+.dropzone {
+  background: #f0f0f0;
+  border-radius: 4px;
+  padding: 2em;
+  display: flex;
+  justify-content: center;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.list, .info {
+  text-align: left;
+}
+  </style>
+</head>
+<body>
+  <h1>SimpleDropzone</h1>
+  <div class="dropzone">
+    <span class="label">Drag in or select some files.</span>
+    <input type="file" multiple class="input">
+  </div>
+  <div class="info"></div>
+  <ul class="list"></ul>
+  <script type="module">
+
+import { SimpleDropzone } from '../dist/simple-dropzone.module.js';
+
+const dropEl = document.querySelector('.dropzone');
+const inputEl = document.querySelector('.input');
+const infoEl = document.querySelector('.info');
+const listEl = document.querySelector('.list');
+
+const dropzone = new SimpleDropzone(dropEl, inputEl);
+
+dropzone.on('drop', ({files, archive}) => {
+  files = Array.from( files );
+  listEl.innerHTML = files
+    .map(([filename, file]) => `<li>${filename} : ${file.size} bytes</li>`)
+    .join('');
+
+  infoEl.textContent = archive
+    ? `Extracted from ${archive.name} : ${archive.size} bytes`
+    : '';
+});
+
+dropzone.on('droperror', ({message}) => {
+  alert(`Error: ${message}`);
+});
+
+  </script>
+</body>
+</html>
