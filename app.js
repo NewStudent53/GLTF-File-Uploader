@@ -1,9 +1,8 @@
 import WebGL from 'three/examples/jsm/capabilities/WebGL.js';
 import { Viewer } from './viewer.js';
+import { SimpleDropzone } from 'simple-dropzone';
 import { ValidationController } from './validation-controller.js';
-import queryString from './query-string';
-
-const queryString = require('query-string');
+import queryString from 'query-string';
 
 if (!(window.File && window.FileReader && window.FileList && window.Blob)) {
   console.error('The File APIs are not fully supported in this browser.');
@@ -50,6 +49,16 @@ class App {
     if (options.model) {
       this.view(options.model, '', new Map());
     }
+  }
+
+  /**
+   * Sets up the drag-and-drop controller.
+   */
+  createDropzone () {
+    const dropCtrl = new SimpleDropzone(this.dropEl, this.inputEl);
+    dropCtrl.on('drop', ({files}) => this.load(files));
+    dropCtrl.on('dropstart', () => this.showSpinner());
+    dropCtrl.on('droperror', () => this.hideSpinner());
   }
 
   /**
